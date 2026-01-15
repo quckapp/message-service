@@ -22,7 +22,7 @@ async fn main() -> std::io::Result<()> {
     tracing_subscriber::fmt::init();
 
     let mongo_uri = env::var("MONGODB_URI").unwrap_or_else(|_| "mongodb://localhost:27017".to_string());
-    let db_name = env::var("DATABASE_NAME").unwrap_or_else(|_| "quckchat_messages".to_string());
+    let db_name = env::var("DATABASE_NAME").unwrap_or_else(|_| "quckapp_messages".to_string());
     let port = env::var("PORT").unwrap_or_else(|_| "3004".to_string());
 
     let client_options = ClientOptions::parse(&mongo_uri).await.expect("Failed to parse MongoDB URI");

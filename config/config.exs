@@ -8,7 +8,7 @@ config :message_service, MessageService.Endpoint,
   pubsub_server: MessageService.PubSub
 
 config :message_service, :mongodb,
-  url: System.get_env("MONGODB_URI") || "mongodb://localhost:27017/quckchat_messages",
+  url: System.get_env("MONGODB_URI") || "mongodb://localhost:27017/quckapp_messages",
   pool_size: 10
 
 config :message_service, :redis,
@@ -21,7 +21,7 @@ config :message_service, :kafka,
   consumer_group: "message-service-group"
 
 config :message_service, MessageService.Guardian,
-  issuer: "quckchat",
+  issuer: "quckapp",
   secret_key: System.get_env("JWT_SECRET") || "your-secret-key"
 
 config :libcluster, topologies: [message_cluster: [strategy: Cluster.Strategy.Gossip]]
