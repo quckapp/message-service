@@ -5,6 +5,10 @@ defmodule MessageService.Endpoint do
 
   plug Plug.RequestId
   plug Plug.Telemetry, event_prefix: [:phoenix, :endpoint]
+
+  # JSON-formatted request logging with Logster
+  plug Logster.Plugs.Logger, log: :info, formatter: Logster.JSONFormatter
+
   plug Plug.Parsers, parsers: [:urlencoded, :multipart, :json], pass: ["*/*"], json_decoder: Jason
   plug Plug.MethodOverride
   plug Plug.Head

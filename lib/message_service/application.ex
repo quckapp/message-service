@@ -3,6 +3,9 @@ defmodule MessageService.Application do
 
   @impl true
   def start(_type, _args) do
+    # Initialize circuit breakers
+    MessageService.CircuitBreaker.init()
+
     children = [
       MessageService.Telemetry,
       {Phoenix.PubSub, name: MessageService.PubSub},
@@ -14,6 +17,7 @@ defmodule MessageService.Application do
       {Redix, [
         host: Application.get_env(:message_service, :redis)[:host],
         port: Application.get_env(:message_service, :redis)[:port],
+        password: Application.get_env(:message_service, :redis)[:password],
         database: Application.get_env(:message_service, :redis)[:database] || 5,
         name: :message_redis
       ]},
@@ -21,6 +25,12 @@ defmodule MessageService.Application do
       {Horde.DynamicSupervisor, [name: MessageService.ConversationSupervisor, strategy: :one_for_one]},
       MessageService.MessageManager,
       MessageService.TypingTracker,
+      # Bloom filter duplicate detector
+      MessageService.DuplicateDetector,
+      MessageService.Kafka.Producer,
+      MessageService.Kafka.Consumer,
+      # Background job processing with Honeydew
+      MessageService.Workers.JobSupervisor,
       {Cluster.Supervisor, [Application.get_env(:libcluster, :topologies), [name: MessageService.ClusterSupervisor]]},
       MessageService.Endpoint
     ]

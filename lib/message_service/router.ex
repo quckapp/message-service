@@ -1,14 +1,20 @@
 defmodule MessageService.Router do
   use Phoenix.Router
   import Phoenix.Controller
+  alias OpenApiSpex.Operation
 
   pipeline :api do
     plug :accepts, ["json"]
     plug MessageService.Plugs.AuthPlug
+    plug OpenApiSpex.Plug.PutApiSpec, module: MessageService.ApiSpec
   end
 
   pipeline :public do
     plug :accepts, ["json"]
+  end
+
+  pipeline :swagger do
+    plug :accepts, ["json", "html"]
   end
 
   scope "/api/v1/messages", MessageService do
@@ -30,5 +36,11 @@ defmodule MessageService.Router do
     pipe_through :public
     get "/", HealthController, :index
     get "/ready", HealthController, :ready
+  end
+
+  scope "/swagger", MessageService do
+    pipe_through :swagger
+    get "/", SwaggerController, :swagger_ui
+    get "/openapi.json", SwaggerController, :openapi_spec
   end
 end

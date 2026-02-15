@@ -1,0 +1,195 @@
+version: "3.8"
+
+services:
+  # ==============================================================================
+  # Message Service - Elixir/Phoenix Application
+  # ==============================================================================
+  message-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: message-service
+    ports:
+      - "4006:4006"
+      - "4369:4369"
+    environment:
+      # Application Configuration
+      PORT: "4006"
+      PHX_HOST: "localhost"
+      PHX_SERVER: "true"
+      SECRET_KEY_BASE: ${SECRET_KEY_BASE:-your-super-secret-key-base-at-least-64-characters-long-for-production}
+
+      # MongoDB Configuration
+      MONGODB_URL: mongodb://mongodb:27017/message_service
+      MONGODB_URI: mongodb://mongodb:27017/message_service
+      MONGODB_POOL_SIZE: "20"
+
+      # Redis Configuration
+      REDIS_URL: redis://redis:6379/5
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      REDIS_PASSWORD: ""
+
+      # Kafka Configuration
+      KAFKA_BROKERS: kafka:9092
+      KAFKA_CONSUMER_GROUP: message-service-group
+
+      # Auth Service Configuration
+      AUTH_SERVICE_URL: http://auth-service:4001
+      JWT_SECRET: ${JWT_SECRET:-your-jwt-secret-key-here}
+
+      # Clustering Configuration
+      RELEASE_DISTRIBUTION: name
+      RELEASE_NODE: message_service@message-service
+      RELEASE_COOKIE: ${RELEASE_COOKIE:-message_service_cookie}
+
+      # Logging
+      LOG_LEVEL: info
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    networks:
+      - quckapp-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4006/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    restart: unless-stopped
+
+  # ==============================================================================
+  # MongoDB - Document Database
+  # ==============================================================================
+  mongodb:
+    image: mongo:7.0
+    container_name: message-service-mongodb
+    ports:
+      - "27019:27017"
+    environment:
+      MONGO_INITDB_DATABASE: message_service
+    volumes:
+      - mongodb_data:/data/db
+      - mongodb_config:/data/configdb
+    networks:
+      - quckapp-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+  # ==============================================================================
+  # Redis - In-Memory Cache and Pub/Sub
+  # ==============================================================================
+  redis:
+    image: redis:7.2-alpine
+    container_name: message-service-redis
+    ports:
+      - "6381:6379"
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    networks:
+      - quckapp-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+  # ==============================================================================
+  # Zookeeper - Required for Kafka
+  # ==============================================================================
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: message-service-zookeeper
+    ports:
+      - "2183:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+      ZOOKEEPER_SYNC_LIMIT: 2
+    volumes:
+      - zookeeper_data:/var/lib/zookeeper/data
+      - zookeeper_log:/var/lib/zookeeper/log
+    networks:
+      - quckapp-network
+    healthcheck:
+      test: ["CMD-SHELL", "echo ruok | nc localhost 2181 | grep imok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    restart: unless-stopped
+
+  # ==============================================================================
+  # Kafka - Message Broker
+  # ==============================================================================
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: message-service-kafka
+    ports:
+      - "9094:9092"
+      - "29094:29092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29094
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_CONFLUENT_LICENSE_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_CONFLUENT_BALANCER_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_LOG_RETENTION_HOURS: 168
+      KAFKA_LOG_RETENTION_BYTES: 1073741824
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+    networks:
+      - quckapp-network
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-broker-api-versions --bootstrap-server localhost:9092"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+# ==============================================================================
+# Networks
+# ==============================================================================
+networks:
+  quckapp-network:
+    driver: bridge
+    name: quckapp-network
+
+# ==============================================================================
+# Volumes
+# ==============================================================================
+volumes:
+  mongodb_data:
+    driver: local
+  mongodb_config:
+    driver: local
+  redis_data:
+    driver: local
+  zookeeper_data:
+    driver: local
+  zookeeper_log:
+    driver: local
+  kafka_data:
+    driver: local

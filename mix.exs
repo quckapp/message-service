@@ -1,13 +1,15 @@
 defmodule MessageService.MixProject do
   use Mix.Project
 
+  @production_envs [:prod, :production, :staging, :live, :qa, :uat1, :uat2, :uat3]
+
   def project do
     [
       app: :message_service,
       version: "1.0.0",
       elixir: "~> 1.15",
       elixirc_paths: elixirc_paths(Mix.env()),
-      start_permanent: Mix.env() == :prod,
+      start_permanent: Mix.env() in @production_envs,
       deps: deps(),
       releases: [message_service: [include_executables_for: [:unix], applications: [runtime_tools: :permanent]]]
     ]
@@ -28,6 +30,7 @@ defmodule MessageService.MixProject do
       {:jason, "~> 1.4"},
       {:cors_plug, "~> 3.0"},
       {:mongodb_driver, "~> 1.4"},
+      {:castore, "~> 1.0"},
       {:redix, "~> 1.3"},
       {:phoenix_pubsub_redis, "~> 3.0"},
       {:brod, "~> 3.16"},
@@ -39,7 +42,18 @@ defmodule MessageService.MixProject do
       {:horde, "~> 0.9"},
       {:timex, "~> 3.7"},
       {:uuid, "~> 1.1"},
-      {:floki, "~> 0.35"}
+      {:floki, "~> 0.35"},
+      {:open_api_spex, "~> 3.18"},
+      {:honeydew, "~> 1.5"},
+      {:logster, "~> 1.1"},
+      {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
+      {:sobelow, "~> 0.13", only: [:dev, :test], runtime: false},
+
+      # Algorithm libraries
+      {:fuse, "~> 2.5"},
+      {:flow, "~> 1.2"},
+      {:machinery, "~> 1.1"},
+      {:bloomex, "~> 1.0"}
     ]
   end
 end
