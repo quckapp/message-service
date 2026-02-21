@@ -11,12 +11,16 @@ defmodule MessageService.Application do
         url: Application.get_env(:message_service, :mongodb)[:url],
         pool_size: Application.get_env(:message_service, :mongodb)[:pool_size] || 10
       ]},
-      {Redix, [
-        host: Application.get_env(:message_service, :redis)[:host],
-        port: Application.get_env(:message_service, :redis)[:port],
-        database: Application.get_env(:message_service, :redis)[:database] || 5,
-        name: :message_redis
-      ]},
+      {Redix,
+        [
+          host: Application.get_env(:message_service, :redis)[:host],
+          port: Application.get_env(:message_service, :redis)[:port],
+          database: Application.get_env(:message_service, :redis)[:database] || 5,
+          name: :message_redis
+        ] ++ if(Application.get_env(:message_service, :redis)[:password],
+          do: [password: Application.get_env(:message_service, :redis)[:password]],
+          else: []
+        )},
       {Horde.Registry, [name: MessageService.ConversationRegistry, keys: :unique]},
       {Horde.DynamicSupervisor, [name: MessageService.ConversationSupervisor, strategy: :one_for_one]},
       MessageService.MessageManager,
