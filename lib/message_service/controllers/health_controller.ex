@@ -1,9 +1,29 @@
 defmodule MessageService.HealthController do
   use Phoenix.Controller, formats: [:json]
+  use OpenApiSpex.ControllerSpecs
+
+  alias MessageService.Schemas.Common
+
+  tags ["Health"]
+
+  operation :index,
+    summary: "Health check",
+    description: "Basic health check endpoint to verify the service is running",
+    responses: [
+      ok: {"Service is healthy", "application/json", Common.HealthResponse}
+    ]
 
   def index(conn, _params) do
     json(conn, %{status: "healthy", service: "message-service", version: "1.0.0"})
   end
+
+  operation :ready,
+    summary: "Readiness check",
+    description: "Readiness check endpoint to verify all service dependencies are available",
+    responses: [
+      ok: {"Service is ready", "application/json", Common.ReadinessResponse},
+      service_unavailable: {"Service is not ready", "application/json", Common.ReadinessResponse}
+    ]
 
   def ready(conn, _params) do
     checks = %{mongo: check_mongo(), redis: check_redis()}
